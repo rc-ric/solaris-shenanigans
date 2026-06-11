@@ -15,6 +15,7 @@
    ✓ Added safety lockout flags for mode transitions
    ✓ Optimized loop timing with last mode tracking
    ✓ Fixed serial spam on signal loss
+   ✓ Added 6th arm servo for wrist roll control
    ======================================================================== */
 
 #include <Servo.h>
@@ -32,8 +33,8 @@
 #define CH_PITCH 1                // Forward/Backward throttle
 #define CH_THROTTLE 2             // Spin speed / Arm rotation
 #define CH_RUDDER 3               // Claw control
-#define CH_CAM_PAN 4              // Camera pan / Wrist angle
-#define CH_CAM_TILT 5             // Camera tilt
+#define CH_CAM_PAN 4              // Camera pan / Wrist pitch angle
+#define CH_CAM_TILT 5             // Camera tilt / Wrist roll
 #define CH_MODE 6                 // Drive/Arm mode switch
 #define CH_TURN 7                 // Turn-in-place toggle
 
@@ -55,12 +56,13 @@
 // WHEEL SERVOS (360° Continuous Rotation)
 Servo servo1, servo2, servo3, servo4;  // Pins 22-25
 
-// ARM SERVOS (MG996R 180°)
-Servo angle;       // Pin 32: Base joint
-Servo boom;        // Pin 33: Boom extension
+// ARM SERVOS (MG996R 180°) - 6 Joint Robotic Arm
+Servo angle;       // Pin 32: Base joint (shoulder)
+Servo boom;        // Pin 33: Boom extension (elbow)
 Servo rota;        // Pin 34: Base rotation
 Servo claw;        // Pin 40: Gripper
-Servo clawang;     // Pin 35: Wrist angle
+Servo clawang;     // Pin 35: Wrist pitch angle
+Servo wristRoll;   // Pin 36: Wrist roll (6th servo)
 
 // CAMERA SERVOS (MG996R 180°)
 Servo pan;         // Pin 30: Camera pan
@@ -115,7 +117,7 @@ void centerWheelServos() {
   servo4.write(90);
 }
 
-/* CENTER ARM SERVOS - Reset all arm joints to neutral (90°)
+/* CENTER ARM SERVOS - Reset all 6 arm joints to neutral (90°)
    Purpose: Safe arm position when entering drive mode
 */
 void centerArmServos() {
@@ -124,6 +126,7 @@ void centerArmServos() {
   rota.write(90);
   claw.write(90);
   clawang.write(90);
+  wristRoll.write(90);
 }
 
 /* CENTER ALL SERVOS - Complete system safe position
@@ -219,7 +222,7 @@ void setup() {
   Serial.println("\n");
   Serial.println("╔════════════════════════════════════════════════════╗");
   Serial.println("║       RIC SOLARIS - 6-WHEEL HEXAPOD ROVER         ║");
-  Serial.println("║     Optimized Code v1.0 - Production Ready        ║");
+  Serial.println("║     Optimized Code v2.0 - With 6-DOF Arm          ║");
   Serial.println("╚════════════════════════════════════════════════════╝");
   Serial.println("\nInitializing hardware...");
 
@@ -243,13 +246,14 @@ void setup() {
   centerWheelServos();
   Serial.println("✓ Wheel servos configured (Pins 22-25)");
 
-  // ARM SERVO SETUP (MG996R 180°)
+  // ARM SERVO SETUP (MG996R 180°) - 6 Servos
   angle.attach(32, 500, 2500);
   boom.attach(33, 500, 2500);
   rota.attach(34, 500, 2500);
   claw.attach(40, 500, 2500);
   clawang.attach(35, 500, 2500);
-  Serial.println("✓ Arm servos configured (Pins 32-35, 40)");
+  wristRoll.attach(36, 500, 2500);
+  Serial.println("✓ Arm servos configured (Pins 32-36, 40) - 6 DOF");
 
   // CAMERA SERVO SETUP (MG996R 180°)
   pan.attach(30, 500, 2500);
@@ -268,6 +272,7 @@ void setup() {
   Serial.println("║              ✓ SYSTEM READY FOR OPERATION           ║");
   Serial.println("║  Mode Switch: < 1300μs = Drive, > 1700μs = Arm    ║");
   Serial.println("║  Turn Mode: < 1300μs = Normal, > 1300μs = Spin    ║");
+  Serial.println("║  ARM: 6-DOF Control with Wrist Roll (CH_CAM_TILT) ║");
   Serial.println("╚════════════════════════════════════════════════════╝\n");
 }
 
@@ -412,15 +417,16 @@ void armModeControl() {
   stopMotors();
   centerWheelServos();
 
-  // ARM JOINT CONTROL - Map PPM channels to servo angles
+  // ARM JOINT CONTROL - Map PPM channels to servo angles (6-DOF Arm)
   // Each channel controls one arm joint (0-180°)
   
-  angle.write(map(ppmChannels[CH_ROLL], 1000, 2000, 0, 180));       // Base joint
-  boom.write(map(ppmChannels[CH_PITCH], 1000, 2000, 0, 180));       // Boom extension
+  angle.write(map(ppmChannels[CH_ROLL], 1000, 2000, 0, 180));       // Base joint (shoulder)
+  boom.write(map(ppmChannels[CH_PITCH], 1000, 2000, 0, 180));       // Boom extension (elbow)
   rota.write(map(ppmChannels[CH_THROTTLE], 1000, 2000, 0, 180));    // Base rotation
   claw.write(map(ppmChannels[CH_RUDDER], 1000, 2000, 0, 180));      // Gripper
-  clawang.write(map(ppmChannels[CH_CAM_PAN], 1000, 2000, 0, 180));  // Wrist angle
+  clawang.write(map(ppmChannels[CH_CAM_PAN], 1000, 2000, 0, 180));  // Wrist pitch angle
+  wristRoll.write(map(ppmChannels[CH_CAM_TILT], 1000, 2000, 0, 180));  // Wrist roll (6th servo)
 }
 
 // ============================== END OF CODE ==============================
-// Production Ready - All optimizations, fixes, and safety features applied
+// Production Ready - All optimizations, fixes, safety features, and 6-DOF arm control applied
